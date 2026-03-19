@@ -1455,7 +1455,12 @@ public class LargeAlphabet {
 
     // 一次性空格生成标记
     private static boolean spaceGenerated = false;
-
+    private static final char[] SPECIAL_ASCII = {
+            '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '-', '.', '/',
+            ':', ';', '<', '=', '>', '?', '@',
+            '[', '\\', ']', '^', '_', '`',
+            '{', '|', '}', '~'
+    };
     private static char getValidNegativeChar(char min, char max) {
         Random random = new Random();
 
@@ -1476,16 +1481,7 @@ public class LargeAlphabet {
 
         // ===== 原有逻辑：整个 Unicode 范围 =====
         if (min == '\u0000' && max == '\uffff') {
-            double digitProbability = 0.5; // 50% 概率生成数字
-            if (random.nextDouble() < digitProbability) {
-                return (char) ('0' + random.nextInt(10));
-            } else {
-                char ch;
-                do {
-                    ch = (char) random.nextInt(65536);
-                } while (!isPrintable(ch));
-                return ch;
-            }
+            return SPECIAL_ASCII[random.nextInt(SPECIAL_ASCII.length)];
         }
 
         // ===== 原有逻辑：优先返回左边界 =====
