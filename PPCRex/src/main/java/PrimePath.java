@@ -14,6 +14,7 @@ import java.util.*;
  *
  */
 public class PrimePath {
+	public static boolean isLargeAlphabet;
     public static String regExp1;//原始正则表达式
     public static Automaton automaton; // 自动机对象
     private int numberOfStates; // 状态数量
@@ -41,6 +42,10 @@ public class PrimePath {
         }
         automaton.determinize();
         automaton.minimize();
+		 // 判断字母表大小（复用自动机）
+        this.isLargeAlphabet = isLargeAlphabetFast(automaton);
+
+        System.out.println("字母表分类: " + (isLargeAlphabet ? "大字母表" : "小字母表"));
         System.out.println(automaton);
 
         /**
@@ -86,6 +91,30 @@ public class PrimePath {
             }
         }
     }
+	
+    private boolean isLargeAlphabetFast(Automaton automaton) {
+        Set<Character> alphabet = new HashSet<>();
+
+        for (State state : automaton.getStates()) {
+            for (Transition t : state.getTransitions()) {
+
+                // 剪枝
+                if (t.getMax() - t.getMin() > 3) {
+                    return true;
+                }
+
+                for (char c = t.getMin(); c <= t.getMax(); c++) {
+                    alphabet.add(c);
+
+                    if (alphabet.size() > 3) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+	
     public class SingletonRegexException extends RuntimeException {
         public SingletonRegexException(String singletonStr) {
             super("只接受字符串 \"" + singletonStr + "\"，跳过处理。");

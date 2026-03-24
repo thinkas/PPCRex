@@ -377,273 +377,536 @@ public class LargeAlphabet {
             System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
         }
         System.out.println("=====================================================\n");
-
-// 从最终最小测试路径中移除所有新增补充的路径 addedPaths
-        MinimumTestPath.finalReplacedEdges.removeAll(addedPaths);
-        reducedFinalPathCount = MinimumTestPath.finalReplacedEdges.size();
-// 打印移除后的最小测试路径
-        System.out.println("\n【最终最小测试路径（移除新增补充路径后）】");
-        for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
-            System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
-        }
-
-        System.out.println("\n【移除 75% 分位前：路径 → 全组合测试串数量统计】");
-
-        int idx = 1;
-        for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
-            long count = countAllCombinations(path, PrimePath.automaton);
-
-            if (count == Long.MAX_VALUE) {
-                System.out.println("路径 " + idx + ": " + path + " → 测试串数量：极大（已溢出）");
-            } else {
-                System.out.println("路径 " + idx + ": " + path + " → 测试串数量：" + count);
+  boolean isLarge = PrimePath.isLargeAlphabet;
+        System.out.println(isLarge);
+        if (isLarge) {
+// 从最终约简测试路径中移除所有新增补充的路径 addedPaths
+            MinimumTestPath.finalReplacedEdges.removeAll(addedPaths);
+            reducedFinalPathCount = MinimumTestPath.finalReplacedEdges.size();
+// 打印移除后的约简测试路径
+            System.out.println("\n【最终约简测试路径（移除新增补充路径后）】");
+            for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
+                System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
             }
 
-            idx++;
-        }
+            System.out.println("\n【移除 75% 分位前：路径 → 全组合测试串数量统计】");
 
-        System.out.println("=====================================================\n");
+            int idx = 1;
+            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+                long count = countAllCombinations(path, PrimePath.automaton);
+
+                if (count == Long.MAX_VALUE) {
+                    System.out.println("路径 " + idx + ": " + path + " → 测试串数量：极大（已溢出）");
+                } else {
+                    System.out.println("路径 " + idx + ": " + path + " → 测试串数量：" + count);
+                }
+
+                idx++;
+            }
+
+            System.out.println("=====================================================\n");
 // ------------------ 新增百分位逻辑 ------------------
 // 计算所有路径长度
-        List<Integer> lengths = new ArrayList<>();
-        for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
-            lengths.add(path.size());
-        }
-
-// 排序
-        Collections.sort(lengths);
-        int n = lengths.size();
-
-// 定义需要打印的百分位
-        double[] percentiles = {0.0, 0.25, 0.50, 0.75, 1.0};
-        System.out.println("路径长度关键百分位统计：");
-        for (double p : percentiles) {
-            int index = (int) Math.ceil(p * n) - 1;
-            index = Math.max(index, 0);       // 避免负索引
-            index = Math.min(index, n - 1);   // 避免越界
-            int value = lengths.get(index);
-            System.out.println((int) (p * 100) + "% 分位数: " + value);
-        }
-
-// 取 0% 和 75% 分位数
-        int length0 = lengths.get(0);
-        int length75 = lengths.get((int) Math.ceil(0.75 * n) - 1);
-        int length100 = lengths.get(n - 1); // 最大值，用于判断所有路径是否相同
-
-// 判断是否需要移除路径
-        if (length0 == length100) {
-            // 所有路径长度相同，不移除任何路径
-            System.out.println("所有路径长度相同，长度>=75%分位数的路径将不被移除。");
-        } else {
-
-            // ------------------ 新增：统计长路径/短路径 ------------------
-            int longCount = 0;
-            int shortCount = 0;
+            List<Integer> lengths = new ArrayList<>();
             for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
-                if (path.size() >= length75) longCount++;
-                else shortCount++;
+                lengths.add(path.size());
             }
 
-            double ratio = (shortCount == 0) ? Double.MAX_VALUE : (double) longCount / shortCount;
-            System.out.println("长路径数量 = " + longCount + "，短路径数量 = " + shortCount + "，长/短占比 = " + ratio);
+// 排序
+            Collections.sort(lengths);
+            int n = lengths.size();
 
-            // 误差范围，避免浮点误差导致 ratio==1 的判断失败
-            double EPS = 1e-9;
-            boolean isRatioEqualOne = Math.abs(ratio - 1.0) < EPS;
+// 定义需要打印的百分位
+            double[] percentiles = {0.0, 0.25, 0.50, 0.75, 1.0};
+            System.out.println("路径长度关键百分位统计：");
+            for (double p : percentiles) {
+                int index = (int) Math.ceil(p * n) - 1;
+                index = Math.max(index, 0);       // 避免负索引
+                index = Math.min(index, n - 1);   // 避免越界
+                int value = lengths.get(index);
+                System.out.println((int) (p * 100) + "% 分位数: " + value);
+            }
 
-            // 移除长度大于等于 75% 分位数的路径，并加入 addedPaths
-            List<List<Integer>> longPaths = new ArrayList<>();
-            for (Iterator<List<Integer>> it = MinimumTestPath.finalReplacedEdges.iterator(); it.hasNext(); ) {
-                List<Integer> path = it.next();
+// 取 0% 和 75% 分位数
+            int length0 = lengths.get(0);
+            int length75 = lengths.get((int) Math.ceil(0.75 * n) - 1);
+            int length100 = lengths.get(n - 1); // 最大值，用于判断所有路径是否相同
 
-                int pathLength = path.size();
-                long count = countAllCombinations(path, PrimePath.automaton);
-                long linearThreshold = (long) pathLength * MAX_BRANCH;
+// 判断是否需要移除路径
+            if (length0 == length100) {
+                // 所有路径长度相同，不移除任何路径
+                System.out.println("所有路径长度相同，长度>=75%分位数的路径将不被移除。");
+            } else {
 
-                boolean isExploding =
-                        (count == Long.MAX_VALUE) || count > linearThreshold;
+                // ------------------ 新增：统计长路径/短路径 ------------------
+                int longCount = 0;
+                int shortCount = 0;
+                for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+                    if (path.size() >= length75) longCount++;
+                    else shortCount++;
+                }
 
-                System.out.println(
-                        "路径 " + path
-                                + " | 长度 = " + pathLength
-                                + " | 组合数 = " + (count == Long.MAX_VALUE ? "溢出" : count)
-                                + " | pairwise 阈值 = " + linearThreshold
-                                + " | 是否爆炸 = " + isExploding
-                );
-                if (pathLength >= length75) {
+                double ratio = (shortCount == 0) ? Double.MAX_VALUE : (double) longCount / shortCount;
+                System.out.println("长路径数量 = " + longCount + "，短路径数量 = " + shortCount + "，长/短占比 = " + ratio);
 
-                    if (ratio > 0.25 && !isRatioEqualOne) {
-                        System.out.println("→ 长路径占比 > 25% 且不为1，全部长路径走随机，移除该路径");
-                        longPaths.add(path);
-                        it.remove();
-                    } else {
-                        if (isExploding) {
-                            System.out.println("→ 移除该路径（长度>=75%分位 且 组合爆炸）");
+                // 误差范围，避免浮点误差导致 ratio==1 的判断失败
+                double EPS = 1e-9;
+                boolean isRatioEqualOne = Math.abs(ratio - 1.0) < EPS;
+
+                // 移除长度大于等于 75% 分位数的路径，并加入 addedPaths
+                List<List<Integer>> longPaths = new ArrayList<>();
+                for (Iterator<List<Integer>> it = MinimumTestPath.finalReplacedEdges.iterator(); it.hasNext(); ) {
+                    List<Integer> path = it.next();
+
+                    int pathLength = path.size();
+                    long count = countAllCombinations(path, PrimePath.automaton);
+                    long linearThreshold = (long) pathLength * MAX_BRANCH;
+
+                    boolean isExploding =
+                            (count == Long.MAX_VALUE) || count > linearThreshold;
+
+                    System.out.println(
+                            "路径 " + path
+                                    + " | 长度 = " + pathLength
+                                    + " | 组合数 = " + (count == Long.MAX_VALUE ? "溢出" : count)
+                                    + " | pairwise 阈值 = " + linearThreshold
+                                    + " | 是否爆炸 = " + isExploding
+                    );
+                    if (pathLength >= length75) {
+
+                        if (ratio > 0.25 && !isRatioEqualOne) {
+                            System.out.println("→ 长路径占比 > 25% 且不为1，全部长路径走随机，移除该路径");
                             longPaths.add(path);
                             it.remove();
                         } else {
-                            System.out.println("→ 保留该路径（可通过 pairwise 覆盖）");
+                            if (isExploding) {
+                                System.out.println("→ 移除该路径（长度>=75%分位 且 组合爆炸）");
+                                longPaths.add(path);
+                                it.remove();
+                            } else {
+                                System.out.println("→ 保留该路径（可通过 pairwise 覆盖）");
+                            }
                         }
-                    }
 
-                } else {
-                    System.out.println("→ 短路径，保留");
+                    } else {
+                        System.out.println("→ 短路径，保留");
+                    }
                 }
+
+                // 将这些长路径加入 addedPaths
+                addedPaths.addAll(longPaths);
             }
 
-            // 将这些长路径加入 addedPaths
-            addedPaths.addAll(longPaths);
-        }
-
-        System.out.println("=====================================================\n");
+            System.out.println("=====================================================\n");
 
 
-// 打印移除长路径后的最小测试路径
-        System.out.println("\n【最终最小测试路径（移除新增补充路径和长度>=75%分位数且超出阈值路径后）】");
-        for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
-            System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
-        }
-        System.out.println("=====================================================\n");
+// 打印移除长路径后的约简测试路径
+            System.out.println("\n【最终约简测试路径（移除新增补充路径和长度>=75%分位数且超出阈值路径后）】");
+            for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
+                System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
+            }
+            System.out.println("=====================================================\n");
 
 
 // 假设在方法最开始，声明一个方法内可见的变量
-        List<String> savedNewTestStrings = new ArrayList<>(); // 保存新增路径测试串
+            List<String> savedNewTestStrings = new ArrayList<>(); // 保存新增路径测试串
 
 // 打印所有通过策略补充的新路径，同时生成随机测试串
-        System.out.println("\n【所有新增补充路径生成的测试串】");
-        if (!addedPaths.isEmpty()) {
-            int tmpStrIndex = 1;
-            for (int i = 0; i < addedPaths.size(); i++) {
-                List<Integer> path = addedPaths.get(i);
-                System.out.println("新增路径 " + (i + 1) + ": " + path);
+            System.out.println("\n【所有新增补充路径生成的测试串】");
+            if (!addedPaths.isEmpty()) {
+                int tmpStrIndex = 1;
+                for (int i = 0; i < addedPaths.size(); i++) {
+                    List<Integer> path = addedPaths.get(i);
+                    System.out.println("新增路径 " + (i + 1) + ": " + path);
 
-                List<String> generatedStrings = buildAllPaths(path, PrimePath.automaton, true);
-                if (!generatedStrings.isEmpty()) {
-                    printCleanedTestString(generatedStrings.get(0), path, tmpStrIndex++);
-                    // 保存到方法外变量
-                    savedNewTestStrings.add(LargeAlphabet.cleanedTestStrings.get(LargeAlphabet.cleanedTestStrings.size() - 1));
+                    List<String> generatedStrings = buildAllPaths(path, PrimePath.automaton, true);
+                    if (!generatedStrings.isEmpty()) {
+                        printCleanedTestString(generatedStrings.get(0), path, tmpStrIndex++);
+                        // 保存到方法外变量
+                        savedNewTestStrings.add(LargeAlphabet.cleanedTestStrings.get(LargeAlphabet.cleanedTestStrings.size() - 1));
+                    }
+                }
+                System.out.println("\n【统一打印所有新增补充的测试串】");
+                System.out.println(savedNewTestStrings);
+            }
+            System.out.println("=====================================================\n");
+// 对修复后的约简测试路径去重
+            Set<String> uniquePaths = new HashSet<>();
+            List<List<Integer>> deduplicatedPaths = new ArrayList<>();
+            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+                String pathStr = path.toString(); // 用字符串做唯一性标识
+                if (uniquePaths.add(pathStr)) {
+                    deduplicatedPaths.add(path);
                 }
             }
-            System.out.println("\n【统一打印所有新增补充的测试串】");
-            System.out.println(savedNewTestStrings);
-        }
-        System.out.println("=====================================================\n");
-
-
-// 对修复后的最小测试路径去重
-        Set<String> uniquePaths = new HashSet<>();
-        List<List<Integer>> deduplicatedPaths = new ArrayList<>();
-        for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
-            String pathStr = path.toString(); // 用字符串做唯一性标识
-            if (uniquePaths.add(pathStr)) {
-                deduplicatedPaths.add(path);
-            }
-        }
 // 替换原始路径列表为去重后的版本
-        MinimumTestPath.finalReplacedEdges = deduplicatedPaths;
-        // 打印未展开的原始路径
-        System.out.println("最小测试路径：");
-        for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
-            System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
-        }
+            MinimumTestPath.finalReplacedEdges = deduplicatedPaths;
+            // 打印未展开的原始路径
+            System.out.println("约简测试路径：");
+            for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
+                System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
+            }
 
 
-        printAutomatonStructure(PrimePath.automaton);
-        isParametersPrinted = false;
-        isPrinted = false;
-        // 构建最小测试路径到展开字符串的映射
-        Map<List<Integer>, List<String>> pathToStrings = new LinkedHashMap<>();
-        for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
-            List<String> allPaths = buildAllPaths(path, PrimePath.automaton);
-            pathToStrings.put(path, allPaths);
-        }
+            printAutomatonStructure(PrimePath.automaton);
+            isParametersPrinted = false;
+            isPrinted = false;
+            // 构建约简测试路径到展开字符串的映射
+            Map<List<Integer>, List<String>> pathToStrings = new LinkedHashMap<>();
+            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+                List<String> allPaths = buildAllPaths(path, PrimePath.automaton);
+                pathToStrings.put(path, allPaths);
+            }
 
 // === BEGIN: 输出空串测试用例（如果初始状态是接受态），放最前面，不参与分组 ===
-        int strIndex = 1;
-        LargeAlphabet.cleanedTestStrings.clear();
-        if (initialState.isAccept()) {
-            printCleanedTestString("", Collections.emptyList(), strIndex++);
-        }
-
+            int strIndex = 1;
+            LargeAlphabet.cleanedTestStrings.clear();
+            if (initialState.isAccept()) {
+                printCleanedTestString("", Collections.emptyList(), strIndex++);
+            }
 
 
 // === BEGIN: 分组与输出逻辑（宽松：连通分量）===
-        Random random = new Random();
+            Random random = new Random();
 
-        List<List<List<Integer>>> groups = new ArrayList<>();
-        List<List<Integer>> allPaths = new ArrayList<>(pathToStrings.keySet());
+            List<List<List<Integer>>> groups = new ArrayList<>();
+            List<List<Integer>> allPaths = new ArrayList<>(pathToStrings.keySet());
 
 // 原来的 grouped 改成 visited
-        boolean[] visited = new boolean[allPaths.size()];
+            boolean[] visited = new boolean[allPaths.size()];
 
-        System.out.println("\n=== 构造无向图并求连通分量（宽松分组）===");
+            System.out.println("\n=== 构造无向图并求连通分量（宽松分组）===");
 
-        for (int i = 0; i < allPaths.size(); i++) {
-            if (visited[i]) continue;
+            for (int i = 0; i < allPaths.size(); i++) {
+                if (visited[i]) continue;
 
-            // 发现一个新的连通分量
-            System.out.println("\n发现未访问路径，作为新连通分量起点: " + allPaths.get(i));
+                // 发现一个新的连通分量
+                System.out.println("\n发现未访问路径，作为新连通分量起点: " + allPaths.get(i));
 
-            List<List<Integer>> group = new ArrayList<>();
-            Queue<Integer> queue = new LinkedList<>();
+                List<List<Integer>> group = new ArrayList<>();
+                Queue<Integer> queue = new LinkedList<>();
 
-            // BFS 初始化
-            queue.add(i);
-            visited[i] = true;
+                // BFS 初始化
+                queue.add(i);
+                visited[i] = true;
 
-            while (!queue.isEmpty()) {
-                int curr = queue.poll();
-                List<Integer> currPath = allPaths.get(curr);
+                while (!queue.isEmpty()) {
+                    int curr = queue.poll();
+                    List<Integer> currPath = allPaths.get(curr);
 
-                group.add(currPath);
-                System.out.println("  访问路径: " + currPath);
+                    group.add(currPath);
+                    System.out.println("  访问路径: " + currPath);
 
-                // 扫描所有其他路径，找相似的
-                for (int j = 0; j < allPaths.size(); j++) {
-                    if (visited[j]) continue;
+                    // 扫描所有其他路径，找相似的
+                    for (int j = 0; j < allPaths.size(); j++) {
+                        if (visited[j]) continue;
 
-                    List<Integer> otherPath = allPaths.get(j);
+                        List<Integer> otherPath = allPaths.get(j);
 
-                    if (onlyOneElementDiff(currPath, otherPath)) {
-                        System.out.println("    相似 → 加边: " + currPath + " —— " + otherPath);
-                        visited[j] = true;
-                        queue.add(j);
+                        if (onlyOneElementDiff(currPath, otherPath)) {
+                            System.out.println("    相似 → 加边: " + currPath + " —— " + otherPath);
+                            visited[j] = true;
+                            queue.add(j);
+                        }
                     }
                 }
-            }
 
-            System.out.println("连通分量完成，包含路径数量: " + group.size());
-            groups.add(group);
-        }
+                System.out.println("连通分量完成，包含路径数量: " + group.size());
+                groups.add(group);
+            }
 
 // === 输出阶段：逻辑与原来完全一致 ===
-        System.out.println("\n=== 按分组输出测试串 ===");
+            System.out.println("\n=== 按分组输出测试串 ===");
 
-        for (List<List<Integer>> group : groups) {
-            boolean isFirstInGroup = true;
-            System.out.println("\n处理分组: " + group);
+            for (List<List<Integer>> group : groups) {
+                boolean isFirstInGroup = true;
+                System.out.println("\n处理分组: " + group);
 
-            for (List<Integer> path : group) {
-                List<String> strings = pathToStrings.get(path);
-                if (strings == null || strings.isEmpty()) continue;
+                for (List<Integer> path : group) {
+                    List<String> strings = pathToStrings.get(path);
+                    if (strings == null || strings.isEmpty()) continue;
 
-                if (isFirstInGroup) {
-                    System.out.println("  代表路径（全保留）: " + path);
-                    for (String original : strings) {
+                    if (isFirstInGroup) {
+                        System.out.println("  代表路径（全保留）: " + path);
+                        for (String original : strings) {
+                            printCleanedTestString(original, path, strIndex++);
+                        }
+                        isFirstInGroup = false;
+                    } else {
+                        String original = strings.get(random.nextInt(strings.size()));
+                        System.out.println("  非代表路径（随机保留一条）: " + path);
                         printCleanedTestString(original, path, strIndex++);
                     }
-                    isFirstInGroup = false;
-                } else {
-                    String original = strings.get(random.nextInt(strings.size()));
-                    System.out.println("  非代表路径（随机保留一条）: " + path);
-                    printCleanedTestString(original, path, strIndex++);
                 }
             }
-        }
 
 // 在清空后，把之前保存的新增测试串追加回来
-        LargeAlphabet.cleanedTestStrings.addAll(savedNewTestStrings);
+            LargeAlphabet.cleanedTestStrings.addAll(savedNewTestStrings);
+        } else {
+//            // 从最终约简测试路径中移除所有新增补充的路径 addedPaths
+//            MinimumTestPath.finalReplacedEdges.removeAll(addedPaths);
+            reducedFinalPathCount = MinimumTestPath.finalReplacedEdges.size();
+// 打印移除后的约简测试路径
+            System.out.println("\n【最终约简测试路径】");
+            for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
+                System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
+            }
+//
+//            System.out.println("\n【移除 75% 分位前：路径 → 全组合测试串数量统计】");
+//
+//            int idx = 1;
+//            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+//                long count = countAllCombinations(path, PrimePath.automaton);
+//
+//                if (count == Long.MAX_VALUE) {
+//                    System.out.println("路径 " + idx + ": " + path + " → 测试串数量：极大（已溢出）");
+//                } else {
+//                    System.out.println("路径 " + idx + ": " + path + " → 测试串数量：" + count);
+//                }
+//
+//                idx++;
+//            }
+//
+//            System.out.println("=====================================================\n");
+//// ------------------ 新增百分位逻辑 ------------------
+//// 计算所有路径长度
+//            List<Integer> lengths = new ArrayList<>();
+//            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+//                lengths.add(path.size());
+//            }
+//
+//// 排序
+//            Collections.sort(lengths);
+//            int n = lengths.size();
+//
+//// 定义需要打印的百分位
+//            double[] percentiles = {0.0, 0.25, 0.50, 0.75, 1.0};
+//            System.out.println("路径长度关键百分位统计：");
+//            for (double p : percentiles) {
+//                int index = (int) Math.ceil(p * n) - 1;
+//                index = Math.max(index, 0);       // 避免负索引
+//                index = Math.min(index, n - 1);   // 避免越界
+//                int value = lengths.get(index);
+//                System.out.println((int) (p * 100) + "% 分位数: " + value);
+//            }
+//
+//// 取 0% 和 75% 分位数
+//            int length0 = lengths.get(0);
+//            int length75 = lengths.get((int) Math.ceil(0.75 * n) - 1);
+//            int length100 = lengths.get(n - 1); // 最大值，用于判断所有路径是否相同
+//
+//// 判断是否需要移除路径
+//            if (length0 == length100) {
+//                // 所有路径长度相同，不移除任何路径
+//                System.out.println("所有路径长度相同，长度>=75%分位数的路径将不被移除。");
+//            } else {
+//
+//                // ------------------ 新增：统计长路径/短路径 ------------------
+//                int longCount = 0;
+//                int shortCount = 0;
+//                for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+//                    if (path.size() >= length75) longCount++;
+//                    else shortCount++;
+//                }
+//
+//                double ratio = (shortCount == 0) ? Double.MAX_VALUE : (double) longCount / shortCount;
+//                System.out.println("长路径数量 = " + longCount + "，短路径数量 = " + shortCount + "，长/短占比 = " + ratio);
+//
+//                // 误差范围，避免浮点误差导致 ratio==1 的判断失败
+//                double EPS = 1e-9;
+//                boolean isRatioEqualOne = Math.abs(ratio - 1.0) < EPS;
+//
+//                // 移除长度大于等于 75% 分位数的路径，并加入 addedPaths
+//                List<List<Integer>> longPaths = new ArrayList<>();
+//                for (Iterator<List<Integer>> it = MinimumTestPath.finalReplacedEdges.iterator(); it.hasNext(); ) {
+//                    List<Integer> path = it.next();
+//
+//                    int pathLength = path.size();
+//                    long count = countAllCombinations(path, PrimePath.automaton);
+//                    long linearThreshold = (long) pathLength * MAX_BRANCH;
+//
+//                    boolean isExploding =
+//                            (count == Long.MAX_VALUE) || count > linearThreshold;
+//
+//                    System.out.println(
+//                            "路径 " + path
+//                                    + " | 长度 = " + pathLength
+//                                    + " | 组合数 = " + (count == Long.MAX_VALUE ? "溢出" : count)
+//                                    + " | pairwise 阈值 = " + linearThreshold
+//                                    + " | 是否爆炸 = " + isExploding
+//                    );
+//                    if (pathLength >= length75) {
+//
+//                        if (ratio > 0.25 && !isRatioEqualOne) {
+//                            System.out.println("→ 长路径占比 > 25% 且不为1，全部长路径走随机，移除该路径");
+//                            longPaths.add(path);
+//                            it.remove();
+//                        } else {
+//                            if (isExploding) {
+//                                System.out.println("→ 移除该路径（长度>=75%分位 且 组合爆炸）");
+//                                longPaths.add(path);
+//                                it.remove();
+//                            } else {
+//                                System.out.println("→ 保留该路径（可通过 pairwise 覆盖）");
+//                            }
+//                        }
+//
+//                    } else {
+//                        System.out.println("→ 短路径，保留");
+//                    }
+//                }
+//
+//                // 将这些长路径加入 addedPaths
+//                addedPaths.addAll(longPaths);
+//            }
+//
+//            System.out.println("=====================================================\n");
+//
+//
+//// 打印移除长路径后的约简测试路径
+//            System.out.println("\n【最终约简测试路径（移除新增补充路径和长度>=75%分位数且超出阈值路径后）】");
+//            for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
+//                System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
+//            }
+//            System.out.println("=====================================================\n");
+//
+//
+////// 假设在方法最开始，声明一个方法内可见的变量
+//            List<String> savedNewTestStrings = new ArrayList<>(); // 保存新增路径测试串
+
+//// 打印所有通过策略补充的新路径，同时生成随机测试串
+//            System.out.println("\n【所有新增补充路径生成的测试串】");
+//            if (!addedPaths.isEmpty()) {
+//                int tmpStrIndex = 1;
+//                for (int i = 0; i < addedPaths.size(); i++) {
+//                    List<Integer> path = addedPaths.get(i);
+//                    System.out.println("新增路径 " + (i + 1) + ": " + path);
+//
+//                    List<String> generatedStrings = buildAllPaths(path, PrimePath.automaton, true);
+//                    if (!generatedStrings.isEmpty()) {
+//                        printCleanedTestString(generatedStrings.get(0), path, tmpStrIndex++);
+//                        // 保存到方法外变量
+//                        savedNewTestStrings.add(LargeAlphabet.cleanedTestStrings.get(LargeAlphabet.cleanedTestStrings.size() - 1));
+//                    }
+//                }
+//                System.out.println("\n【统一打印所有新增补充的测试串】");
+//                System.out.println(savedNewTestStrings);
+//            }
+//            System.out.println("=====================================================\n");
+
+
+// 对修复后的约简测试路径去重
+            Set<String> uniquePaths = new HashSet<>();
+            List<List<Integer>> deduplicatedPaths = new ArrayList<>();
+            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+                String pathStr = path.toString(); // 用字符串做唯一性标识
+                if (uniquePaths.add(pathStr)) {
+                    deduplicatedPaths.add(path);
+                }
+            }
+// 替换原始路径列表为去重后的版本
+            MinimumTestPath.finalReplacedEdges = deduplicatedPaths;
+            // 打印未展开的原始路径
+            System.out.println("约简测试路径：");
+            for (int i = 0; i < MinimumTestPath.finalReplacedEdges.size(); i++) {
+                System.out.println("路径 " + (i + 1) + ": " + MinimumTestPath.finalReplacedEdges.get(i));
+            }
+
+
+            printAutomatonStructure(PrimePath.automaton);
+            isParametersPrinted = false;
+            isPrinted = false;
+            // 构建约简测试路径到展开字符串的映射
+            Map<List<Integer>, List<String>> pathToStrings = new LinkedHashMap<>();
+            for (List<Integer> path : MinimumTestPath.finalReplacedEdges) {
+                List<String> allPaths = buildAllPaths(path, PrimePath.automaton);
+                pathToStrings.put(path, allPaths);
+            }
+
+// === BEGIN: 输出空串测试用例（如果初始状态是接受态），放最前面，不参与分组 ===
+            int strIndex = 1;
+            LargeAlphabet.cleanedTestStrings.clear();
+            if (initialState.isAccept()) {
+                printCleanedTestString("", Collections.emptyList(), strIndex++);
+            }
+
+
+// === BEGIN: 分组与输出逻辑（宽松：连通分量）===
+            Random random = new Random();
+
+            List<List<List<Integer>>> groups = new ArrayList<>();
+            List<List<Integer>> allPaths = new ArrayList<>(pathToStrings.keySet());
+
+// 原来的 grouped 改成 visited
+            boolean[] visited = new boolean[allPaths.size()];
+
+            System.out.println("\n=== 构造无向图并求连通分量（宽松分组）===");
+
+            for (int i = 0; i < allPaths.size(); i++) {
+                if (visited[i]) continue;
+
+                // 发现一个新的连通分量
+                System.out.println("\n发现未访问路径，作为新连通分量起点: " + allPaths.get(i));
+
+                List<List<Integer>> group = new ArrayList<>();
+                Queue<Integer> queue = new LinkedList<>();
+
+                // BFS 初始化
+                queue.add(i);
+                visited[i] = true;
+
+                while (!queue.isEmpty()) {
+                    int curr = queue.poll();
+                    List<Integer> currPath = allPaths.get(curr);
+
+                    group.add(currPath);
+                    System.out.println("  访问路径: " + currPath);
+
+                    // 扫描所有其他路径，找相似的
+                    for (int j = 0; j < allPaths.size(); j++) {
+                        if (visited[j]) continue;
+
+                        List<Integer> otherPath = allPaths.get(j);
+
+                        if (onlyOneElementDiff(currPath, otherPath)) {
+                            System.out.println("    相似 → 加边: " + currPath + " —— " + otherPath);
+                            visited[j] = true;
+                            queue.add(j);
+                        }
+                    }
+                }
+
+                System.out.println("连通分量完成，包含路径数量: " + group.size());
+                groups.add(group);
+            }
+
+// === 输出阶段：逻辑与原来完全一致 ===
+            System.out.println("\n=== 按分组输出测试串 ===");
+
+            for (List<List<Integer>> group : groups) {
+                boolean isFirstInGroup = true;
+                System.out.println("\n处理分组: " + group);
+
+                for (List<Integer> path : group) {
+                    List<String> strings = pathToStrings.get(path);
+                    if (strings == null || strings.isEmpty()) continue;
+
+                    if (isFirstInGroup) {
+                        System.out.println("  代表路径（全保留）: " + path);
+                        for (String original : strings) {
+                            printCleanedTestString(original, path, strIndex++);
+                        }
+                        isFirstInGroup = false;
+                    } else {
+                        String original = strings.get(random.nextInt(strings.size()));
+                        System.out.println("  非代表路径（随机保留一条）: " + path);
+                        printCleanedTestString(original, path, strIndex++);
+                    }
+                }
+            }
+
 // === END: 分组与输出逻辑（宽松）===
+        }
     }
     /**
      * 判断 small 是否是 big 的连续子路径（严格连续匹配）
